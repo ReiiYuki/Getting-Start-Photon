@@ -2,11 +2,23 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Launcher : MonoBehaviour {
+public class Launcher : Photon.PunBehaviour
+{
 
     #region Public Variables
-
-
+    /// <summary>
+    /// The maximum number of players per room. When a room is full, it can't be joined by new players, and so new room will be created.
+    /// </summary>   
+    [Tooltip("The maximum number of players per room. When a room is full, it can't be joined by new players, and so new room will be created")]
+    public byte MaxPlayersPerRoom = 4;
+    /// <summary>
+    /// The PUN loglevel. 
+    /// </summary>
+    public PhotonLogLevel Loglevel = PhotonLogLevel.Informational;
+    [Tooltip("The Ui Panel to let the user enter name, connect and play")]
+    public GameObject controlPanel;
+    [Tooltip("The UI Label to inform the user that the connection is in progress")]
+    public GameObject progressLabel;
     #endregion
 
 
@@ -24,13 +36,21 @@ public class Launcher : MonoBehaviour {
 
     #region MonoBehaviour CallBacks
 
+    private void Start()
+    {
+        progressLabel.SetActive(false);
+        controlPanel.SetActive(true);
 
+    }
     /// <summary>
     /// MonoBehaviour method called on GameObject by Unity during early initialization phase.
     /// </summary>
     void Awake()
     {
 
+        // #NotImportant
+        // Force LogLevel
+        PhotonNetwork.logLevel = Loglevel;
 
         // #Critical
         // we don't join the lobby. There is no need to join a lobby to get the list of rooms.
@@ -40,15 +60,6 @@ public class Launcher : MonoBehaviour {
         // #Critical
         // this makes sure we can use PhotonNetwork.LoadLevel() on the master client and all clients in the same room sync their level automatically
         PhotonNetwork.automaticallySyncScene = true;
-    }
-
-
-    /// <summary>
-    /// MonoBehaviour method called on GameObject by Unity during initialization phase.
-    /// </summary>
-    void Start()
-    {
-        Connect();
     }
 
 
@@ -65,7 +76,8 @@ public class Launcher : MonoBehaviour {
     /// </summary>
     public void Connect()
     {
-
+        progressLabel.SetActive(true);
+        controlPanel.SetActive(false);
 
         // we check if we are connected or not, we join if we are , else we initiate the connection to the server.
         if (PhotonNetwork.connected)
@@ -83,6 +95,42 @@ public class Launcher : MonoBehaviour {
 
     #endregion
 
+    #region Photon.PunBehaviour CallBacks
 
+
+    public override void OnConnectedToMaster()
+    {
+
+
+        Debug.Log("DemoAnimator/Launcher: OnConnectedToMaster() was called by PUN");
+
+
+    }
+
+
+    public override void OnDisconnectedFromPhoton()
+    {
+        progressLabel.SetActive(false);
+        controlPanel.SetActive(true);
+
+        Debug.LogWarning("DemoAnimator/Launcher: OnDisconnectedFromPhoton() was called by PUN");
+    }
+
+
+    #endregion
+
+    public override void OnPhotonRandomJoinFailed(object[] codeAndMsg)
+    {
+        Debug.Log("DemoAnimator/Launcher:OnPhotonRandomJoinFailed() was called by PUN. No random room available, so we create one.\nCalling: PhotonNetwork.CreateRoom(null, new RoomOptions() {maxPlayers = 4}, null);");
+
+        // #Critical: we failed to join a random room, maybe none exists or they are all full. No worries, we create a new room.
+        PhotonNetwork.CreateRoom(null, new RoomOptions() { MaxPlayers = MaxPlayersPerRoom }, null);
+
+    }
+
+    public override void OnJoinedRoom()
+    {
+        Debug.Log("DemoAnimator/Launcher: OnJoinedRoom() called by PUN. Now this client is in a room.");
+    }
 }
 
